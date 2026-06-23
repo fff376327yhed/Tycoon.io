@@ -1085,7 +1085,7 @@
     pointer-events:none;
   }
   .witch-inner {
-    position:absolute; inset:0; z-index:2;
+    position:absolute; inset:0; z-index:4;
     width:100%; height:100%;
     padding:18px 14px 20px;
     display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:10px;
@@ -2075,23 +2075,22 @@
   <div class="witch-overlay-dark"></div>
   <div id="witch-cauldron-click" onclick="handleWitchCauldronClick(event)" title="가마솥을 클릭해 마녀 EXP 획득"></div>
   <div class="witch-inner">
-    <div class="witch-char-switch" style="display:flex;gap:6px;">
-      <button id="witch-prestige-mini-btn" onclick="document.getElementById('prestige-btn').click()" style="display:none;flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,200,40,.4);color:var(--gold);border-radius:6px;cursor:pointer;transition:all .2s;">✦ PRESTIGE</button>
-      <button id="witch-sfx-btn" onclick="toggleWitchSfx()" class="on" style="flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(90,255,32,.3);color:#a0ff60;border-radius:6px;cursor:pointer;transition:all .2s;">🔊 SFX</button>
-      <button id="witch-bgm-btn" onclick="toggleWitchBgm()" style="flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(90,255,32,.3);color:#a0ff60;border-radius:6px;cursor:pointer;transition:all .2s;">♪ BGM</button>
-      <button id="witch-region-move-btn" title="다른 지역으로 이동 (준비중)" style="flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(90,255,32,.3);color:#a0ff60;border-radius:6px;cursor:pointer;transition:all .2s;">🗺 지역이동</button>
-      <button onclick="openAdminModal()" style="flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(90,255,32,.3);color:#a0ff60;border-radius:6px;cursor:pointer;transition:all .2s;">⚙ ADMIN</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+      <div class="witch-char-switch" style="display:flex;gap:6px;">
+        <button id="witch-prestige-mini-btn" onclick="document.getElementById('prestige-btn').click()" style="display:none;flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,200,40,.4);color:var(--gold);border-radius:6px;cursor:pointer;transition:all .2s;">✦ PRESTIGE</button>
+        <button id="witch-sfx-btn" onclick="toggleWitchSfx()" class="on" style="flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(90,255,32,.3);color:#a0ff60;border-radius:6px;cursor:pointer;transition:all .2s;">🔊 SFX</button>
+        <button id="witch-bgm-btn" onclick="toggleWitchBgm()" style="flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(90,255,32,.3);color:#a0ff60;border-radius:6px;cursor:pointer;transition:all .2s;">♪ BGM</button>
+        <button id="witch-region-move-btn" title="다른 지역으로 이동 (준비중)" style="flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(90,255,32,.3);color:#a0ff60;border-radius:6px;cursor:pointer;transition:all .2s;">🗺 지역이동</button>
+        <button onclick="openAdminModal()" style="flex:0 0 auto;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:1px;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(90,255,32,.3);color:#a0ff60;border-radius:6px;cursor:pointer;transition:all .2s;">⚙ ADMIN</button>
+      </div>
+      <div class="witch-stats-bar">
+        <div class="wstat"><span class="w-label">총 마녀EXP</span><span class="w-value" id="witch-total-exp">0</span></div>
+        <div class="wstat"><span class="w-label">클릭당</span><span class="w-value" id="witch-click-val">0</span></div>
+        <div class="wstat"><span class="w-label">자동/초</span><span class="w-value" id="witch-aps-val">0</span></div>
+        <div class="wstat"><span class="w-label">크리확률</span><span class="w-value" id="witch-crit-val">0%</span></div>
+      </div>
     </div>
-    <div class="witch-stats-bar">
-      <div class="wstat"><span class="w-label">총 마녀EXP</span><span class="w-value" id="witch-total-exp">0</span></div>
-      <div class="wstat"><span class="w-label">클릭당</span><span class="w-value" id="witch-click-val">0</span></div>
-      <div class="wstat"><span class="w-label">자동/초</span><span class="w-value" id="witch-aps-val">0</span></div>
-      <div class="wstat"><span class="w-label">크리확률</span><span class="w-value" id="witch-crit-val">0%</span></div>
-    </div>
-    <div class="witch-tech-columns">
-      <div class="witch-tech-col" id="witch-tech-col-left"><!-- JS로 렌더링 --></div>
-      <div class="witch-tech-col" id="witch-tech-col-right"><!-- JS로 렌더링 --></div>
-    </div>
+    
     <button class="witch-close-btn" onclick="closeWitchModal()">✕ 닫기</button>
   </div>
 </div>
@@ -6769,9 +6768,7 @@ function getBattleEnemies(mode) {
 let battleState = null; // 현재 진행 중인 전투 상태
 
 function openBattleModal() {
-  const modal = document.getElementById('battle-modal');
-  modal.classList.add('active');
-  battleBackToSelect();
+  showNotification('⚔ 전투 기능은 미구현 기능입니다.');
 }
 function closeBattleModal() {
   document.getElementById('battle-modal').classList.remove('active');
@@ -7593,11 +7590,14 @@ function loadRankData(category) {
       let exp=0, prestige=0, gacha=0;
       if(category==='jsy') {
         exp = gs.totalExp||0;
-        prestige = gs.prestigeCount||0;
+        // prestigeMult에서 환생 횟수 역산: mult=1→0회, 2→1회, 3→2회... (log 근사)
+        const pm = gs.prestigeMult||1;
+        prestige = pm <= 1 ? 0 : Math.round(Math.log(pm) / Math.log(1.5));
         gacha = Object.keys(gs.gachaCards||{}).length;
       } else if(category==='cms') {
         exp = gs.cmsExp||0;
-        prestige = gs.cmsPrestigeCount||0;
+        const cpm = gs.cmsPrestigeMult||1;
+        prestige = cpm <= 1 ? 0 : Math.round(Math.log(cpm) / Math.log(1.5));
         gacha = Object.keys(gs.cmsGachaCards||{}).length;
       } else {
         exp = gs.witchExp||0;

@@ -57,9 +57,7 @@ function getBattleEnemies(mode) {
 let battleState = null; // 현재 진행 중인 전투 상태
 
 function openBattleModal() {
-  const modal = document.getElementById('battle-modal');
-  modal.classList.add('active');
-  battleBackToSelect();
+  showNotification('⚔ 전투 기능은 미구현 기능입니다.');
 }
 function closeBattleModal() {
   document.getElementById('battle-modal').classList.remove('active');
