@@ -1668,6 +1668,7 @@ document.getElementById('sfx-btn').addEventListener('click',()=>{
 // ═══════════════════════════════════════════════════
 
 function saveGame(){
+  state._savedAt = Date.now();
   try{localStorage.setItem('alien_clicker_v3_save',JSON.stringify(state));}catch(e){}
   // 오디오 설정 별도 저장 (state에 포함하지 않는 런타임 변수)
   try{
@@ -1737,6 +1738,35 @@ function loadGame(){
         catch(e) { state.witchTechLevels = {}; }
       }
       recalcMultipliers();
+
+      // ── 오프라인 EXP 보상 (25%) ────────────────────────
+      if (state._savedAt) {
+        const offlineSec = Math.max(0, (Date.now() - state._savedAt) / 1000);
+        // 5초 이하는 무시 (새로고침 등)
+        if (offlineSec > 5) {
+          const jsyAps = getAutoEpsTotal();
+          const cmsAps = getCmsAutoGoldTotal();
+          const offlineJsy = Math.floor(jsyAps * offlineSec * 0.25);
+          const offlineCms = Math.floor(cmsAps * offlineSec * 0.25);
+          const offlineMin = Math.floor(offlineSec / 60);
+          const offlineSec2 = Math.floor(offlineSec % 60);
+          const timeStr = offlineMin > 0
+            ? offlineMin + '분 ' + offlineSec2 + '초'
+            : offlineSec2 + '초';
+          let msg = '💤 오프라인 ' + timeStr + ' —';
+          if (offlineJsy > 0) {
+            addExp(offlineJsy);
+            msg += ' 정아영 +' + formatNum(offlineJsy) + ' EXP';
+          }
+          if (offlineCms > 0 && cmsIsUnlocked()) {
+            addCmsExp(offlineCms);
+            msg += ' / 차명석 +' + formatNum(offlineCms) + ' EXP';
+          }
+          if (offlineJsy > 0 || offlineCms > 0) {
+            setTimeout(() => showNotification(msg), 800);
+          }
+        }
+      }
     }
   }catch(e){}
 }
