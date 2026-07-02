@@ -767,6 +767,14 @@ const REGION_INSPECT_ZONES = {
       pos: { left:'30%', top:'55%', width:'50%', height:'40%' },
       imgSrc: null,
     },
+    {
+      label: '땅', action: 'item', itemId: 2, requireAttr: {}, apCost: 100,
+      respawnMins: 360,
+    },
+    {
+      label: '나무', action: 'item', itemId: 3, requireAttr: {}, apCost: 100,
+      respawnMins: 360,
+    },
   ],
   '오두막 내부': [
     {
