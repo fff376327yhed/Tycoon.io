@@ -35,6 +35,7 @@ let state = {
   workerPaused: false,
   gachaCards: {},    // id: true (보유 카드)
   gachaShards: {},   // grade: count (파편 수)
+  offlineBonus: 0,   // 가챠 카드 '오프라인 EXP 배율' 합산치 (recalcMultipliers에서 갱신)
   desperadoShards: {},   // 데스페라도 장착 중 획득 파편 (합성 불가 별도 보관)
   items: {},         // id: count (보유 아이템 수량)
   gachaPullCount: 0, // 현재 스테이지 내 뽑기 횟수 (스테이지 진화 시 리셋)
@@ -51,6 +52,7 @@ let state = {
   // 차명석 전용 뽑기 (정아영과 완전 분리)
   cmsGachaCards: {},    // id: true
   cmsGachaShards: {},   // grade: count
+  cmsOfflineBonus: 0,   // 차명석 가챠 카드 '오프라인 EXP 배율' 합산치
   cmsDesperadoShards: {},   // 데스페라도 장착 중 차명석 획득 파편 (합성 불가 별도 보관)
   cmsGachaPullCount: 0, // 차명석 스테이지 내 뽑기 횟수
   // 은행원 조디 (환전소)
@@ -1383,14 +1385,15 @@ function recalcMultipliers() {
       state.critMult+=u.multAdd;
     }
   });
-  // 가챠 카드 효과 적용
+  // 가챠 카드 효과 적용 (2026-07: 크리 확률만 제거 → 오프라인 EXP 배율로 대체 / 크리 배율은 유지)
   let gachaAllMult = 1;
+  state.offlineBonus = 0;
   GACHA_CARDS.forEach(card=>{
     if(!state.gachaCards[card.id]) return;
     if(card.type==='clickMult')  state.clickMult  *= card.val;
     else if(card.type==='autoMult')   state.autoMult   *= card.val;
-    else if(card.type==='critChance') state.critChance += card.val;
     else if(card.type==='critMult')   state.critMult   += card.val;
+    else if(card.type==='offlineMult') state.offlineBonus += card.val;
     else if(card.type==='allMult')    gachaAllMult     *= card.val;
   });
   state.clickMult *= gachaAllMult;
@@ -1705,6 +1708,8 @@ function loadGame(){
       if(!state.battleClears) state.battleClears={};
       if(!state.gachaCards)  state.gachaCards={};
       if(!state.gachaShards) state.gachaShards={};
+      if(state.offlineBonus === undefined)    state.offlineBonus = 0;
+      if(state.cmsOfflineBonus === undefined) state.cmsOfflineBonus = 0;
       if(!state.items)       state.items={};
       if(!state.totalPlayTime) state.totalPlayTime = 0;   // 총 접속시간 마이그레이션
       // 차명석 필드 마이그레이션
@@ -1741,15 +1746,17 @@ function loadGame(){
       }
       recalcMultipliers();
 
-      // ── 오프라인 EXP 보상 (25%) ────────────────────────
+      // ── 오프라인 EXP 보상 (기본 25% + 가챠 카드 '오프라인 EXP 배율' 보너스) ──
       if (state._savedAt) {
         const offlineSec = Math.max(0, (Date.now() - state._savedAt) / 1000);
         // 5초 이하는 무시 (새로고침 등)
         if (offlineSec > 5) {
           const jsyAps = getAutoEpsTotal();
           const cmsAps = getCmsAutoGoldTotal();
-          const offlineJsy = Math.floor(jsyAps * offlineSec * 0.25);
-          const offlineCms = Math.floor(cmsAps * offlineSec * 0.25);
+          const offlineRateJsy = 0.25 + (state.offlineBonus || 0);
+          const offlineRateCms = 0.25 + (state.cmsOfflineBonus || 0);
+          const offlineJsy = Math.floor(jsyAps * offlineSec * offlineRateJsy);
+          const offlineCms = Math.floor(cmsAps * offlineSec * offlineRateCms);
           const offlineMin = Math.floor(offlineSec / 60);
           const offlineSec2 = Math.floor(offlineSec % 60);
           const timeStr = offlineMin > 0
@@ -2946,19 +2953,19 @@ function renderItemModal() {
 // baseCost = 스테이지별 고정값 (동적 수익 기반 대신 명확한 고정값 사용)
 // n번째 뽑기 비용 = baseCost × (n+1)^2.0
 const JSY_GACHA_BASE_COST_BY_STAGE = [
-  20000,        // stage 0
-  50000,        // stage 1
-  200000,       // stage 2
-  1000000,      // stage 3
-  5000000,      // stage 4
-  25000000,     // stage 5
-  150000000,    // stage 6
-  1000000000,   // stage 7
-  8000000000,   // stage 8
-  60000000000,  // stage 9
-  500000000000, // stage 10
-  3000000000000,// stage 11
-  20000000000000,// stage 12
+  14000,         // stage 0  (2026-07: 뽑기 비용 30% 인하)
+  35000,         // stage 1
+  140000,        // stage 2
+  700000,        // stage 3
+  3500000,       // stage 4
+  17500000,      // stage 5
+  105000000,     // stage 6
+  700000000,     // stage 7
+  5600000000,    // stage 8
+  42000000000,   // stage 9
+  350000000000,  // stage 10
+  2100000000000, // stage 11
+  14000000000000,// stage 12
 ];
 function getGachaBaseCost() {
   return JSY_GACHA_BASE_COST_BY_STAGE[Math.min(state.stage, JSY_GACHA_BASE_COST_BY_STAGE.length - 1)];
@@ -2981,15 +2988,15 @@ function getGachaTotalCost(count) {
 
 // ── 차명석 전용 가챠 비용 (스테이지 기반 고정값) ─────────────────────
 const CMS_GACHA_BASE_COST_BY_STAGE = [
-  15000,         // cmsStage 0
-  60000,         // cmsStage 1
-  400000,        // cmsStage 2
-  3000000,       // cmsStage 3
-  20000000,      // cmsStage 4
-  150000000,     // cmsStage 5
-  1200000000,    // cmsStage 6
-  10000000000,   // cmsStage 7
-  100000000000,  // cmsStage 8
+  10500,         // cmsStage 0  (2026-07: 뽑기 비용 30% 인하)
+  42000,         // cmsStage 1
+  280000,        // cmsStage 2
+  2100000,       // cmsStage 3
+  14000000,      // cmsStage 4
+  105000000,     // cmsStage 5
+  840000000,     // cmsStage 6
+  7000000000,    // cmsStage 7
+  70000000000,   // cmsStage 8
 ];
 function getCmsGachaBaseCost() {
   return CMS_GACHA_BASE_COST_BY_STAGE[Math.min(state.cmsStage, CMS_GACHA_BASE_COST_BY_STAGE.length - 1)];
@@ -3500,11 +3507,11 @@ function gachaAnimShowSingle(idx) {
 }
 
 function _getCardEffectLabel(card) {
-  if(card.type === 'clickMult')  return `클릭 EXP ×${card.val}`;
-  if(card.type === 'autoMult')   return `자동 EXP ×${card.val}`;
-  if(card.type === 'critChance') return `크리 확률 +${(card.val*100).toFixed(1)}%`;
-  if(card.type === 'critMult')   return `크리 배율 +${card.val}`;
-  if(card.type === 'allMult')    return `전체 EXP ×${card.val}`;
+  if(card.type === 'clickMult')   return `클릭 EXP ×${card.val}`;
+  if(card.type === 'autoMult')    return `자동 EXP ×${card.val}`;
+  if(card.type === 'critMult')    return `크리 배율 +${card.val}`;
+  if(card.type === 'offlineMult') return `오프라인 EXP +${(card.val*100).toFixed(1)}%`;
+  if(card.type === 'allMult')     return `전체 EXP ×${card.val}`;
   return card.desc;
 }
 
@@ -3684,13 +3691,13 @@ function renderGachaStats() {
     return;
   }
 
-  // 카테고리별 분류
+  // 카테고리별 분류 (2026-07: 크리 확률 카테고리만 제거, 오프라인 EXP 배율 추가 / 크리 배율은 유지)
   const cats = [
-    { key: 'clickMult',  label: `🖱 클릭 ${unitLabel}`,   color: '#39ff14', unit: '×', isMultiply: true },
-    { key: 'autoMult',   label: `⚙ 자동 ${unitLabel}`,   color: '#00ffcc', unit: '×', isMultiply: true },
-    { key: 'critChance', label: '🎯 크리 확률',            color: '#ffaa00', unit: '%', isMultiply: false },
-    { key: 'critMult',   label: '💥 크리 배율',            color: '#ff4488', unit: '',  isMultiply: false },
-    { key: 'allMult',    label: `✨ 전체 ${unitLabel}`,    color: '#cc44ff', unit: '×', isMultiply: true },
+    { key: 'clickMult',   label: `🖱 클릭 ${unitLabel}`,    color: '#39ff14', unit: '×', isMultiply: true },
+    { key: 'autoMult',    label: `⚙ 자동 ${unitLabel}`,    color: '#00ffcc', unit: '×', isMultiply: true },
+    { key: 'critMult',    label: '💥 크리 배율',             color: '#ff4488', unit: '',  isMultiply: false },
+    { key: 'offlineMult', label: '💤 오프라인 EXP',          color: '#66ccff', unit: '%', isMultiply: false },
+    { key: 'allMult',     label: `✨ 전체 ${unitLabel}`,     color: '#cc44ff', unit: '×', isMultiply: true },
   ];
 
   let html = '';
@@ -3713,8 +3720,8 @@ function renderGachaStats() {
     cards.forEach(c => {
       const gradeColor = GRADE_COLORS[c.grade] || '#aaa';
       let valStr = '';
-      if(cat.key === 'critChance') valStr = `+${(c.val*100).toFixed(1)}%`;
-      else if(cat.key === 'critMult') valStr = `+${c.val}`;
+      if(cat.key === 'critMult') valStr = `+${c.val}`;
+      else if(cat.key === 'offlineMult') valStr = `+${(c.val*100).toFixed(1)}%`;
       else valStr = `×${c.val}`;
 
       html += `<div class="gstat-row">
@@ -3729,8 +3736,8 @@ function renderGachaStats() {
 
     // 합계
     let totalStr = '';
-    if(cat.key === 'critChance') totalStr = `+${(total*100).toFixed(1)}%`;
-    else if(cat.key === 'critMult') totalStr = `+${total.toFixed(2)}`;
+    if(cat.key === 'critMult') totalStr = `+${total.toFixed(2)}`;
+    else if(cat.key === 'offlineMult') totalStr = `+${(total*100).toFixed(1)}%`;
     else totalStr = `×${total.toFixed(4)}`;
 
     html += `<div class="gstat-total-row">
@@ -3746,7 +3753,7 @@ function renderGachaStats() {
       <div class="gstat-cat-title" style="color:#cc4444;">💀 차명석 현재 적용 수치</div>
       <div class="gstat-row"><span class="gstat-card-name">클릭 EXP 배율</span><span class="gstat-val" style="color:#ff6666;">×${state.cmsClickMult.toFixed(3)}</span></div>
       <div class="gstat-row"><span class="gstat-card-name">자동 EXP 배율</span><span class="gstat-val" style="color:#ff8888;">×${state.cmsAutoMult.toFixed(3)}</span></div>
-      <div class="gstat-row"><span class="gstat-card-name">크리티컬 확률</span><span class="gstat-val" style="color:#ffaa00;">${(state.cmsCritChance*100).toFixed(1)}%</span></div>
+      <div class="gstat-row"><span class="gstat-card-name">오프라인 EXP</span><span class="gstat-val" style="color:#66ccff;">${((0.25+(state.cmsOfflineBonus||0))*100).toFixed(1)}%</span></div>
       <div class="gstat-row"><span class="gstat-card-name">크리티컬 배율</span><span class="gstat-val" style="color:#ff4488;">×${state.cmsCritMult.toFixed(2)}</span></div>
     </div>`;
   } else {
@@ -3754,7 +3761,7 @@ function renderGachaStats() {
       <div class="gstat-cat-title" style="color:#fff;">⚡ 현재 실제 적용 수치</div>
       <div class="gstat-row"><span class="gstat-card-name">클릭 EXP 배율</span><span class="gstat-val" style="color:#39ff14;">×${state.clickMult.toFixed(3)}</span></div>
       <div class="gstat-row"><span class="gstat-card-name">자동 EPS 배율</span><span class="gstat-val" style="color:#00ffcc;">×${state.autoMult.toFixed(3)}</span></div>
-      <div class="gstat-row"><span class="gstat-card-name">크리티컬 확률</span><span class="gstat-val" style="color:#ffaa00;">${(state.critChance*100).toFixed(1)}%</span></div>
+      <div class="gstat-row"><span class="gstat-card-name">오프라인 EXP</span><span class="gstat-val" style="color:#66ccff;">${((0.25+(state.offlineBonus||0))*100).toFixed(1)}%</span></div>
       <div class="gstat-row"><span class="gstat-card-name">크리티컬 배율</span><span class="gstat-val" style="color:#ff4488;">×${state.critMult.toFixed(2)}</span></div>
     </div>`;
   }
@@ -3811,7 +3818,39 @@ function gachaTab(tab, btn) {
   document.getElementById('gacha-tab-inv').style.display    = tab==='inv'    ? '' : 'none';
   document.getElementById('gacha-tab-shard').style.display  = tab==='shard'  ? '' : 'none';
   document.getElementById('gacha-tab-stats').style.display  = tab==='stats'  ? '' : 'none';
+  document.getElementById('gacha-tab-all').style.display    = tab==='all'    ? '' : 'none';
   renderGachaModal();
+}
+
+// ── 전체 카드 도감 (미보유 포함) ──────────────────────────────
+function renderGachaAllCards() {
+  const grid = document.getElementById('gacha-all-grid');
+  if(!grid) return;
+  const allCards = _gachaMode === 'cms' ? CMS_GACHA_CARDS : GACHA_CARDS;
+  const owned    = _gachaMode === 'cms' ? state.cmsGachaCards : state.gachaCards;
+  const curStage = _gachaMode === 'cms' ? state.cmsStage : state.stage;
+
+  const sorted = [...allCards].sort((a,b)=>GRADE_ORDER.indexOf(a.grade)-GRADE_ORDER.indexOf(b.grade));
+  grid.innerHTML = '';
+  sorted.forEach(card=>{
+    const isOwned    = !!owned[card.id];
+    const isLocked   = card.unlockStage > curStage; // 아직 해금 스테이지 미도달
+    const div = document.createElement('div');
+    div.className = `gacha-inv-card ${GRADE_BG[card.grade]}${isOwned ? '' : ' gc-unowned'}`;
+    div.style.borderColor = GRADE_COLORS[card.grade];
+    div.innerHTML = `
+      ${isOwned ? '<div class="ic-on"></div>' : '<div class="ic-lock">🔒</div>'}
+      <div class="ic-emoji">${isOwned ? card.emoji : '❔'}</div>
+      <div class="ic-grade" style="color:${GRADE_COLORS[card.grade]}">${card.grade}</div>
+      <div class="ic-name">${isOwned ? card.name : '???'}</div>
+      <div class="ic-effect">${isOwned ? card.desc : (isLocked ? '미해금 스테이지' : '미보유')}</div>
+    `;
+    grid.appendChild(div);
+  });
+
+  const ownedCount = sorted.filter(c=>owned[c.id]).length;
+  const countEl = document.getElementById('gacha-all-count');
+  if(countEl) countEl.textContent = `수집 현황: ${ownedCount} / ${sorted.length}`;
 }
 
 function renderGachaModal() {
@@ -3819,6 +3858,7 @@ function renderGachaModal() {
   renderGachaInv();
   renderGachaShards();
   renderGachaStats();
+  renderGachaAllCards();
   if(_gachaMode === 'cms'){
     // 차명석 모드: 재화 소모
     const cost1  = getCurrentCmsGachaCost();
@@ -3906,12 +3946,12 @@ function renderGachaShards() {
   GRADE_ORDER.slice(0,-1).forEach((grade,i)=>{
     const nextGrade = GRADE_ORDER[i+1];
     const count = shards[grade]||0;
-    const canMerge = count>=25;
+    const canMerge = count>=SHARD_MERGE_COST;
     const row = document.createElement('div');
     row.className='gacha-shard-row';
     row.innerHTML=`
       <span class="sr-grade" style="color:${GRADE_COLORS[grade]}">${grade}</span>
-      <span class="sr-count">파편 ${count}/25</span>
+      <span class="sr-count">파편 ${count}/${SHARD_MERGE_COST}</span>
       <span style="font-size:.6rem;color:#555;">→ <span style="color:${GRADE_COLORS[nextGrade]}">${nextGrade}</span> 카드</span>
       <button class="sr-merge-btn" ${canMerge?'':'disabled'} onclick="gachaMerge('${grade}','${nextGrade}')">합성</button>
     `;
@@ -3925,9 +3965,9 @@ function gachaMerge(fromGrade, toGrade) {
   const shards = _gachaMode === 'cms' ? state.cmsGachaShards : state.gachaShards;
   const cards  = _gachaMode === 'cms' ? state.cmsGachaCards  : state.gachaCards;
   const pool   = _gachaMode === 'cms' ? getCmsGachaPool()    : getGachaPool();
-  if((shards[fromGrade]||0)<25){ showNotification('파편이 부족합니다!'); return; }
+  if((shards[fromGrade]||0)<SHARD_MERGE_COST){ showNotification('파편이 부족합니다!'); return; }
   const candidates = pool.filter(c=>c.grade===toGrade && !cards[c.id]);
-  shards[fromGrade] -= 25;
+  shards[fromGrade] -= SHARD_MERGE_COST;
   if(candidates.length===0){
     // 모두 보유 중 → 파편으로 변환 + 중복 애니 실행
     shards[toGrade] = (shards[toGrade]||0)+1;
@@ -3940,7 +3980,7 @@ function gachaMerge(fromGrade, toGrade) {
       _gachaAnimResults = [{ card: dupCard, isDup: true }];
       _gachaSingleIdx   = 0;
       document.getElementById('gacha-intro-count').textContent = '✦ 합성 ✦';
-      document.getElementById('gacha-intro-sub').textContent   = `${fromGrade} 파편 25개 → ${toGrade} 파편+1 (전부 보유!)`;
+      document.getElementById('gacha-intro-sub').textContent   = `${fromGrade} 파편 ${SHARD_MERGE_COST}개 → ${toGrade} 파편+1 (전부 보유!)`;
       const overlay = document.getElementById('gacha-anim-overlay');
       overlay.classList.add('active');
       if(_gachaPortalAnim) _gachaPortalAnim();
@@ -3949,7 +3989,7 @@ function gachaMerge(fromGrade, toGrade) {
       playGachaIntroSound();
       setTimeout(() => gachaAnimShowSingle(0), 1200);
     } else {
-      showNotification(`✦ ${fromGrade} 파편 25개 → ${toGrade} 파편 1개 (전부 보유!)`);
+      showNotification(`✦ ${fromGrade} 파편 ${SHARD_MERGE_COST}개 → ${toGrade} 파편 1개 (전부 보유!)`);
       renderGachaModal();
     }
   } else {
@@ -3963,7 +4003,7 @@ function gachaMerge(fromGrade, toGrade) {
     _gachaSingleIdx   = 0;
     // 인트로 텍스트를 합성 전용으로 설정
     document.getElementById('gacha-intro-count').textContent = '✦ 합성 ✦';
-    document.getElementById('gacha-intro-sub').textContent   = `${fromGrade} 파편 25개로 소환 중...`;
+    document.getElementById('gacha-intro-sub').textContent   = `${fromGrade} 파편 ${SHARD_MERGE_COST}개로 소환 중...`;
     const overlay = document.getElementById('gacha-anim-overlay');
     overlay.classList.add('active');
     if(_gachaPortalAnim) _gachaPortalAnim();

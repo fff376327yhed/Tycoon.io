@@ -772,6 +772,8 @@
   .gacha-inv-card .ic-name { font-size:.58rem; color:#aaa; margin-top:2px; line-height:1.3; }
   .gacha-inv-card .ic-effect { font-size:.52rem; color:#666; margin-top:2px; }
   .gacha-inv-card .ic-on { position:absolute; top:3px; right:3px; width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 4px var(--green); }
+  .gacha-inv-card.gc-unowned { opacity:.32; filter:grayscale(1); }
+  .gacha-inv-card .ic-lock { position:absolute; top:3px; right:3px; font-size:.6rem; opacity:.7; }
 
   /* shard merge section */
   .gacha-shard-row {
@@ -2178,7 +2180,7 @@
       </div>
       <div class="help-card">
         <div class="help-card-title">🔮 파편 합성</div>
-        <p>중복 카드는 자동으로 파편으로 변환됩니다. 같은 등급 파편 25개를 모으면 다음 등급 카드 1장으로 합성할 수 있습니다.<br>C 파편 25개 → B 카드, B 파편 25개 → A 카드, ...</p>
+        <p>중복 카드는 자동으로 파편으로 변환됩니다. 같은 등급 파편 20개를 모으면 다음 등급 카드 1장으로 합성할 수 있습니다.<br>C 파편 20개 → B 카드, B 파편 20개 → A 카드, ...</p>
       </div>
       <div class="help-tip">💡 전략 팁: 초반엔 빠르게 진화하며 뽑기로 SS~SSS 카드를 모으는 게 핵심. EX 카드는 Stage 11 이후에만 뽑히므로 후반까지 아끼거나 합성을 노리세요!</div>
     </div>
@@ -2280,6 +2282,7 @@
       <button class="gacha-tab active" onclick="gachaTab('inv',this)">📦 보유 카드</button>
       <button class="gacha-tab" onclick="gachaTab('shard',this)">🔮 파편 합성</button>
       <button class="gacha-tab" onclick="gachaTab('stats',this)">📊 카드 효과</button>
+      <button class="gacha-tab" onclick="gachaTab('all',this)">📖 전체 카드</button>
     </div>
 
     <div id="gacha-tab-inv">
@@ -2288,12 +2291,17 @@
     </div>
 
     <div id="gacha-tab-shard" style="display:none;">
-      <div style="font-size:.62rem;color:#555;margin-bottom:8px;text-align:center;">같은 등급 파편 25개 → 다음 등급 카드 1장</div>
+      <div style="font-size:.62rem;color:#555;margin-bottom:8px;text-align:center;">같은 등급 파편 20개 → 다음 등급 카드 1장</div>
       <div id="gacha-shard-list"></div>
     </div>
 
     <div id="gacha-tab-stats" style="display:none;">
       <div id="gacha-stats-content"></div>
+    </div>
+
+    <div id="gacha-tab-all" style="display:none;">
+      <div id="gacha-all-count" style="font-size:.62rem;color:#888;margin-bottom:8px;text-align:center;"></div>
+      <div class="gacha-inv-grid" id="gacha-all-grid"></div>
     </div>
 
     <button class="gacha-close-btn" onclick="closeGachaModal()">닫기</button>

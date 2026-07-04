@@ -192,36 +192,40 @@ const WORKERS = [
 // 등급: C B A S SS SSS EX
 // unlockStage: 이 stage 이상이어야 뽑기 풀에 포함
 // effect: recalcMultipliers에서 적용
-//   type: 'clickMult'|'autoMult'|'critChance'|'critMult'|'allMult'
+//   type: 'clickMult'|'autoMult'|'offlineMult'|'critMult'|'allMult'
+//   (2026-07: 카드 효과에서 '크리 확률(critChance)'은 제거되고 '오프라인 EXP 배율(offlineMult)'로 대체됨)
 //   val: 곱연산 or 덧셈 (type에 따라)
 
 const GRADE_ORDER = ['C','B','A','S','SS','SSS','EX'];
+const SHARD_MERGE_COST = 20; // 2026-07: 파편 합성 비용 25개 → 20개로 완화
 const GRADE_COLORS = { C:'#aaa', B:'#44bbff', A:'#44ff88', S:'#ffdd00', SS:'#ff8844', SSS:'#ff44aa', EX:'#cc44ff' };
 const GRADE_BG    = { C:'bg-C', B:'bg-B', A:'bg-A', S:'bg-S', SS:'bg-SS', SSS:'bg-SSS', EX:'bg-EX' };
 
 // 스테이지 0~12 → 뽑기 풀 확률표 (해당 stage부터 해금)
 // 각 풀은 [C,B,A,S,SS,SSS,EX] 비율 (합=100), EX≤1%, SSS≤5%
 
+// 2026-07 확률 재조정: 전설급(SSS·EX)을 실제 모바일 가챠 수준으로 하향
+// (EX 최종 0.5%대, SSS 최종 3%대까지만 — 남는 비율은 S/SS로 재분배)
 const GACHA_PROB_BY_STAGE = [
   // stage 0~2: C/B만
-  [76,   24,    0,    0,    0,    0,    0],   // 합=100
-  [74,   26,    0,    0,    0,    0,    0],   // 합=100
-  [68,   27,    5,    0,    0,    0,    0],   // 합=100
+  [76,    24,    0,    0,    0,     0,    0],    // 합=100
+  [74,    26,    0,    0,    0,     0,    0],    // 합=100
+  [68,    27,    5,    0,    0,     0,    0],    // 합=100
   // stage 3~4
-  [58,   27,   13,    2,    0,    0,    0],   // 합=100
-  [50,   27,   18,    4.5,  0.5,  0,    0],   // 합=100
+  [58,    27,   13,    2,    0,     0,    0],    // 합=100
+  [50,    27,   18,    4.5,  0.5,   0,    0],    // 합=100
   // stage 5~6
-  [43,   25,   21,    8,    2.5,  0.5,  0],   // 합=100
-  [37,   23,   22,   12,    4,    1.5,  0.5], // 합=100
+  [43.08, 25.05,21.04, 8.02, 2.51,  0.3,  0],    // 합=100, SSS 0.3%
+  [37.42, 23.26,22.25, 12.13,4.04,  0.8,  0.1],  // 합=100, SSS 0.8%, EX 0.1%
   // stage 7~8
-  [32,   21,   22,   15,    7,    2.5,  0.5], // 합=100
-  [29,   20,   22,   19,    5,    4.5,  0.5], // 합=100, SSS<5%, EX=0.5%
+  [32.51, 21.34,22.35, 15.24,7.11,  1.3,  0.15], // 합=100, SSS 1.3%, EX 0.15%
+  [29.92, 20.63,22.69, 19.6, 5.16,  1.8,  0.2],  // 합=100, SSS 1.8%, EX 0.2%
   // stage 9~10
-  [24.7, 18,   22,   20.5, 10,    4,    0.8], // 합=100, SSS<5%, EX=0.8%
-  [19,   16,   22,   22,   15,    5,    1],   // 합=100, SSS=5%, EX=1%
+  [25.3,  18.43,22.53, 21,   10.24, 2.2,  0.3],  // 합=100, SSS 2.2%, EX 0.3%
+  [19.61, 16.51,22.7,  22.7, 15.48, 2.6,  0.4],  // 합=100, SSS 2.6%, EX 0.4%
   // stage 11~12
-  [21.2, 14,   21,   24,   14,    5,    0.8], // 합=100, SSS=5%, EX=0.8%
-  [14.5, 12,   20,   25,   23,    5,    0.5], // 합=100
+  [21.77, 14.38,21.57, 24.65,14.38, 2.8,  0.45], // 합=100, SSS 2.8%, EX 0.45%
+  [14.81, 12.25,20.42, 25.53,23.49, 3.0,  0.5],  // 합=100, SSS 3%(최종), EX 0.5%(최종)
 ];
 
 // ═══════════════════════════════════════════════════
@@ -235,16 +239,16 @@ const GACHA_CARDS = [
   // ══════════════════════════════════════════════════
   { id:'c01', grade:'C', emoji:'🌱', name:'새싹의 힘',       desc:'클릭 EXP ×1.08',  unlockStage:0, type:'clickMult',  val:1.08 },
   { id:'c02', grade:'C', emoji:'🍃', name:'바람의 속삭임',    desc:'자동 EXP ×1.08',  unlockStage:0, type:'autoMult',   val:1.08 },
-  { id:'c03', grade:'C', emoji:'🌀', name:'작은 소용돌이',    desc:'크리 확률 +1%',   unlockStage:0, type:'critChance', val:0.01 },
+  { id:'c03', grade:'C', emoji:'🌀', name:'작은 소용돌이',    desc:'오프라인 EXP +1%', unlockStage:0, type:'offlineMult', val:0.01 },
   { id:'c04', grade:'C', emoji:'💧', name:'물방울 응축',      desc:'클릭 EXP ×1.10',  unlockStage:0, type:'clickMult',  val:1.10 },
   { id:'c05', grade:'C', emoji:'🪨', name:'돌의 기운',        desc:'자동 EXP ×1.10',  unlockStage:0, type:'autoMult',   val:1.10 },
-  { id:'c06', grade:'C', emoji:'🍀', name:'네잎클로버',       desc:'크리 확률 +1%',   unlockStage:0, type:'critChance', val:0.01 },
+  { id:'c06', grade:'C', emoji:'🍀', name:'네잎클로버',       desc:'오프라인 EXP +1%', unlockStage:0, type:'offlineMult', val:0.01 },
   { id:'c07', grade:'C', emoji:'🌾', name:'황금 밀밭',        desc:'자동 EXP ×1.12',  unlockStage:0, type:'autoMult',   val:1.12 },
   { id:'c08', grade:'C', emoji:'🪵', name:'나무의 결',        desc:'클릭 EXP ×1.12',  unlockStage:0, type:'clickMult',  val:1.12 },
   { id:'c09', grade:'C', emoji:'🌞', name:'햇살 에너지',      desc:'크리 배율 +0.1',  unlockStage:0, type:'critMult',   val:0.10 },
   { id:'c10', grade:'C', emoji:'🌧️', name:'빗소리 리듬',     desc:'자동 EXP ×1.15',  unlockStage:0, type:'autoMult',   val:1.15 },
   { id:'c11', grade:'C', emoji:'🍄', name:'버섯 포자',        desc:'클릭 EXP ×1.15',  unlockStage:0, type:'clickMult',  val:1.15 },
-  { id:'c12', grade:'C', emoji:'🦋', name:'나비 날개',        desc:'크리 확률 +1.5%', unlockStage:0, type:'critChance', val:0.015},
+  { id:'c12', grade:'C', emoji:'🦋', name:'나비 날개',        desc:'오프라인 EXP +1.5%', unlockStage:0, type:'offlineMult', val:0.015},
   { id:'c13', grade:'C', emoji:'🐚', name:'조개 껍데기',      desc:'자동 EXP ×1.12',  unlockStage:0, type:'autoMult',   val:1.12 },
   { id:'c14', grade:'C', emoji:'🌵', name:'선인장 가시',      desc:'클릭 EXP ×1.12',  unlockStage:0, type:'clickMult',  val:1.12 },
 
@@ -252,17 +256,17 @@ const GACHA_CARDS = [
   // B등급 (stage 0+) — 14장
   // ══════════════════════════════════════════════════
   { id:'b01', grade:'B', emoji:'⚡', name:'전기 충전',        desc:'클릭 EXP ×1.18',  unlockStage:0, type:'clickMult',  val:1.18 },
-  { id:'b02', grade:'B', emoji:'🔥', name:'작은 불꽃',        desc:'크리 확률 +2%',   unlockStage:0, type:'critChance', val:0.02 },
+  { id:'b02', grade:'B', emoji:'🔥', name:'작은 불꽃',        desc:'오프라인 EXP +2%', unlockStage:0, type:'offlineMult', val:0.02 },
   { id:'b03', grade:'B', emoji:'🌊', name:'파도의 리듬',      desc:'자동 EXP ×1.20',  unlockStage:0, type:'autoMult',   val:1.20 },
   { id:'b04', grade:'B', emoji:'🌙', name:'달빛 에너지',      desc:'클릭 EXP ×1.20',  unlockStage:0, type:'clickMult',  val:1.20 },
   { id:'b05', grade:'B', emoji:'❄️', name:'얼음 결정',        desc:'크리 배율 +0.15', unlockStage:0, type:'critMult',   val:0.15 },
   { id:'b06', grade:'B', emoji:'🌪️', name:'회오리 기운',     desc:'자동 EXP ×1.22',  unlockStage:0, type:'autoMult',   val:1.22 },
   { id:'b07', grade:'B', emoji:'🦊', name:'여우의 날렵함',    desc:'클릭 EXP ×1.22',  unlockStage:0, type:'clickMult',  val:1.22 },
-  { id:'b08', grade:'B', emoji:'🌺', name:'꽃잎 폭발',        desc:'크리 확률 +2.5%', unlockStage:0, type:'critChance', val:0.025},
+  { id:'b08', grade:'B', emoji:'🌺', name:'꽃잎 폭발',        desc:'오프라인 EXP +2.5%', unlockStage:0, type:'offlineMult', val:0.025},
   { id:'b09', grade:'B', emoji:'🦜', name:'앵무새의 지혜',    desc:'자동 EXP ×1.25',  unlockStage:0, type:'autoMult',   val:1.25 },
   { id:'b10', grade:'B', emoji:'🧊', name:'빙하 코어',        desc:'크리 배율 +0.20', unlockStage:0, type:'critMult',   val:0.20 },
   { id:'b11', grade:'B', emoji:'🌶️', name:'매운 에너지',     desc:'클릭 EXP ×1.25',  unlockStage:0, type:'clickMult',  val:1.25 },
-  { id:'b12', grade:'B', emoji:'🎯', name:'명중의 감각',      desc:'크리 확률 +3%',   unlockStage:1, type:'critChance', val:0.03 },
+  { id:'b12', grade:'B', emoji:'🎯', name:'명중의 감각',      desc:'오프라인 EXP +3%', unlockStage:1, type:'offlineMult', val:0.03 },
   { id:'b13', grade:'B', emoji:'🐍', name:'뱀의 독',          desc:'자동 EXP ×1.28',  unlockStage:1, type:'autoMult',   val:1.28 },
   { id:'b14', grade:'B', emoji:'🔔', name:'울림의 파동',      desc:'클릭 EXP ×1.28',  unlockStage:1, type:'clickMult',  val:1.28 },
 
@@ -270,7 +274,7 @@ const GACHA_CARDS = [
   // A등급 (stage 2+) — 14장
   // ══════════════════════════════════════════════════
   { id:'a01', grade:'A', emoji:'🌟', name:'별빛 증폭',        desc:'클릭 EXP ×1.35',  unlockStage:2, type:'clickMult',  val:1.35 },
-  { id:'a02', grade:'A', emoji:'🦅', name:'독수리의 눈',      desc:'크리 확률 +4%',   unlockStage:2, type:'critChance', val:0.04 },
+  { id:'a02', grade:'A', emoji:'🦅', name:'독수리의 눈',      desc:'오프라인 EXP +4%', unlockStage:2, type:'offlineMult', val:0.04 },
   { id:'a03', grade:'A', emoji:'🌈', name:'무지개 파동',      desc:'전체 EXP ×1.12',  unlockStage:2, type:'allMult',    val:1.12 },
   { id:'a04', grade:'A', emoji:'🔮', name:'수정 구슬',        desc:'자동 EXP ×1.38',  unlockStage:2, type:'autoMult',   val:1.38 },
   { id:'a05', grade:'A', emoji:'⚔️', name:'예리한 칼날',      desc:'크리 배율 +0.35', unlockStage:2, type:'critMult',   val:0.35 },
@@ -278,7 +282,7 @@ const GACHA_CARDS = [
   { id:'a07', grade:'A', emoji:'🦋', name:'변이 나비',        desc:'자동 EXP ×1.42',  unlockStage:3, type:'autoMult',   val:1.42 },
   { id:'a08', grade:'A', emoji:'🌊', name:'심해의 힘',        desc:'크리 배율 +0.45', unlockStage:3, type:'critMult',   val:0.45 },
   { id:'a09', grade:'A', emoji:'🎆', name:'폭죽 에너지',      desc:'전체 EXP ×1.15',  unlockStage:3, type:'allMult',    val:1.15 },
-  { id:'a10', grade:'A', emoji:'🦄', name:'유니콘의 뿔',      desc:'크리 확률 +5%',   unlockStage:3, type:'critChance', val:0.05 },
+  { id:'a10', grade:'A', emoji:'🦄', name:'유니콘의 뿔',      desc:'오프라인 EXP +5%', unlockStage:3, type:'offlineMult', val:0.05 },
   { id:'a11', grade:'A', emoji:'🌙', name:'초승달 각인',      desc:'클릭 EXP ×1.42',  unlockStage:3, type:'clickMult',  val:1.42 },
   { id:'a12', grade:'A', emoji:'🐺', name:'늑대의 울부짖음',  desc:'자동 EXP ×1.45',  unlockStage:4, type:'autoMult',   val:1.45 },
   { id:'a13', grade:'A', emoji:'💠', name:'다면체 수정',      desc:'전체 EXP ×1.18',  unlockStage:4, type:'allMult',    val:1.18 },
@@ -290,14 +294,14 @@ const GACHA_CARDS = [
   { id:'s01', grade:'S', emoji:'💎', name:'다이아 코어',      desc:'전체 EXP ×1.22',  unlockStage:4, type:'allMult',    val:1.22 },
   { id:'s02', grade:'S', emoji:'🌠', name:'유성우',            desc:'클릭 EXP ×1.55',  unlockStage:4, type:'clickMult',  val:1.55 },
   { id:'s03', grade:'S', emoji:'🌌', name:'성운의 기운',      desc:'자동 EXP ×1.60',  unlockStage:4, type:'autoMult',   val:1.60 },
-  { id:'s04', grade:'S', emoji:'👁️', name:'제3의 눈',         desc:'크리 확률 +6%',   unlockStage:5, type:'critChance', val:0.06 },
+  { id:'s04', grade:'S', emoji:'👁️', name:'제3의 눈',         desc:'오프라인 EXP +6%', unlockStage:5, type:'offlineMult', val:0.06 },
   { id:'s05', grade:'S', emoji:'🗡️', name:'영혼 파열',        desc:'크리 배율 +0.65', unlockStage:5, type:'critMult',   val:0.65 },
   { id:'s06', grade:'S', emoji:'🏆', name:'챔피언의 의지',    desc:'전체 EXP ×1.28',  unlockStage:5, type:'allMult',    val:1.28 },
   { id:'s07', grade:'S', emoji:'🐲', name:'어린 용',           desc:'클릭 EXP ×1.65',  unlockStage:5, type:'clickMult',  val:1.65 },
   { id:'s08', grade:'S', emoji:'⭐', name:'별의 핵',           desc:'자동 EXP ×1.72',  unlockStage:6, type:'autoMult',   val:1.72 },
   { id:'s09', grade:'S', emoji:'🌋', name:'용암 흐름',         desc:'크리 배율 +0.80', unlockStage:6, type:'critMult',   val:0.80 },
   { id:'s10', grade:'S', emoji:'🌀', name:'소용돌이 핵',       desc:'전체 EXP ×1.32',  unlockStage:6, type:'allMult',    val:1.32 },
-  { id:'s11', grade:'S', emoji:'🦁', name:'사자의 포효',       desc:'크리 확률 +7%',   unlockStage:6, type:'critChance', val:0.07 },
+  { id:'s11', grade:'S', emoji:'🦁', name:'사자의 포효',       desc:'오프라인 EXP +7%', unlockStage:6, type:'offlineMult', val:0.07 },
   { id:'s12', grade:'S', emoji:'🌊', name:'해일의 파도',       desc:'클릭 EXP ×1.75',  unlockStage:7, type:'clickMult',  val:1.75 },
   { id:'s13', grade:'S', emoji:'🔮', name:'예언의 구슬',       desc:'자동 EXP ×1.80',  unlockStage:7, type:'autoMult',   val:1.80 },
 
@@ -307,14 +311,14 @@ const GACHA_CARDS = [
   { id:'ss01', grade:'SS', emoji:'🔱', name:'삼지창의 힘',    desc:'전체 EXP ×1.40',  unlockStage:6,  type:'allMult',   val:1.40 },
   { id:'ss02', grade:'SS', emoji:'🌋', name:'화산 폭발',      desc:'클릭 EXP ×2.0',   unlockStage:6,  type:'clickMult', val:2.0  },
   { id:'ss03', grade:'SS', emoji:'🌪️', name:'토네이도 코어', desc:'자동 EXP ×2.0',   unlockStage:7,  type:'autoMult',  val:2.0  },
-  { id:'ss04', grade:'SS', emoji:'🦁', name:'왕의 포효',      desc:'크리 확률 +9%',   unlockStage:7,  type:'critChance',val:0.09 },
+  { id:'ss04', grade:'SS', emoji:'🦁', name:'왕의 포효',      desc:'오프라인 EXP +9%', unlockStage:7,  type:'offlineMult',val:0.09 },
   { id:'ss05', grade:'SS', emoji:'⚡', name:'번개 심판',      desc:'크리 배율 +1.1',  unlockStage:7,  type:'critMult',  val:1.1  },
   { id:'ss06', grade:'SS', emoji:'🐉', name:'반룡의 비늘',    desc:'전체 EXP ×1.48',  unlockStage:7,  type:'allMult',   val:1.48 },
   { id:'ss07', grade:'SS', emoji:'🌑', name:'어둠 에너지',    desc:'클릭 EXP ×2.2',   unlockStage:8,  type:'clickMult', val:2.2  },
   { id:'ss08', grade:'SS', emoji:'☄️', name:'혜성 충돌',      desc:'자동 EXP ×2.3',   unlockStage:8,  type:'autoMult',  val:2.3  },
   { id:'ss09', grade:'SS', emoji:'💫', name:'별똥별 소나기',  desc:'크리 배율 +1.3',  unlockStage:8,  type:'critMult',  val:1.3  },
   { id:'ss10', grade:'SS', emoji:'🌟', name:'초고온 플라즈마',desc:'전체 EXP ×1.55',  unlockStage:8,  type:'allMult',   val:1.55 },
-  { id:'ss11', grade:'SS', emoji:'🦅', name:'폭풍의 황제',    desc:'크리 확률 +10%',  unlockStage:8,  type:'critChance',val:0.10 },
+  { id:'ss11', grade:'SS', emoji:'🦅', name:'폭풍의 황제',    desc:'오프라인 EXP +10%', unlockStage:8,  type:'offlineMult',val:0.10 },
   { id:'ss12', grade:'SS', emoji:'🌊', name:'심해 압력',      desc:'클릭 EXP ×2.4',   unlockStage:9,  type:'clickMult', val:2.4  },
   { id:'ss13', grade:'SS', emoji:'🔮', name:'심연의 거울',    desc:'자동 EXP ×2.5',   unlockStage:9,  type:'autoMult',  val:2.5  },
 
@@ -324,12 +328,12 @@ const GACHA_CARDS = [
   { id:'sss01', grade:'SSS', emoji:'🐉', name:'용의 심장',    desc:'전체 EXP ×1.65',  unlockStage:9,  type:'allMult',   val:1.65 },
   { id:'sss02', grade:'SSS', emoji:'🌑', name:'블랙홀 코어',  desc:'클릭 EXP ×2.6',   unlockStage:9,  type:'clickMult', val:2.6  },
   { id:'sss03', grade:'SSS', emoji:'🌀', name:'차원 균열',    desc:'자동 EXP ×2.8',   unlockStage:9,  type:'autoMult',  val:2.8  },
-  { id:'sss04', grade:'SSS', emoji:'💀', name:'절대 소멸',    desc:'크리 확률 +13%',  unlockStage:9,  type:'critChance',val:0.13 },
+  { id:'sss04', grade:'SSS', emoji:'💀', name:'절대 소멸',    desc:'오프라인 EXP +13%', unlockStage:9,  type:'offlineMult',val:0.13 },
   { id:'sss05', grade:'SSS', emoji:'🌟', name:'초신성 폭발',  desc:'크리 배율 +1.8',  unlockStage:9,  type:'critMult',  val:1.8  },
   { id:'sss06', grade:'SSS', emoji:'⚛️', name:'원자 분열',    desc:'전체 EXP ×1.80',  unlockStage:10, type:'allMult',   val:1.80 },
   { id:'sss07', grade:'SSS', emoji:'🌌', name:'은하 핵',       desc:'클릭 EXP ×3.0',   unlockStage:10, type:'clickMult', val:3.0  },
   { id:'sss08', grade:'SSS', emoji:'🔱', name:'신의 삼지창',  desc:'자동 EXP ×3.2',   unlockStage:10, type:'autoMult',  val:3.2  },
-  { id:'sss09', grade:'SSS', emoji:'👁️', name:'전지의 눈',    desc:'크리 확률 +15%',  unlockStage:10, type:'critChance',val:0.15 },
+  { id:'sss09', grade:'SSS', emoji:'👁️', name:'전지의 눈',    desc:'오프라인 EXP +15%', unlockStage:10, type:'offlineMult',val:0.15 },
   { id:'sss10', grade:'SSS', emoji:'💥', name:'빅뱅 여파',    desc:'크리 배율 +2.3',  unlockStage:11, type:'critMult',  val:2.3  },
   { id:'sss11', grade:'SSS', emoji:'🌠', name:'항성 폭발',    desc:'전체 EXP ×2.0',   unlockStage:11, type:'allMult',   val:2.0  },
   { id:'sss12', grade:'SSS', emoji:'🦋', name:'우주 나비',    desc:'클릭 EXP ×3.5',   unlockStage:11, type:'clickMult', val:3.5  },
@@ -342,7 +346,7 @@ const GACHA_CARDS = [
   { id:'ex03', grade:'EX', emoji:'⚛️', name:'초월 존재',         desc:'크리 배율 +3.5', unlockStage:11, type:'critMult',  val:3.5  },
   { id:'ex04', grade:'EX', emoji:'🐉', name:'태초의 용',         desc:'클릭 EXP ×4.0',  unlockStage:12, type:'clickMult', val:4.0  },
   { id:'ex05', grade:'EX', emoji:'💫', name:'신의 숨결',         desc:'자동 EXP ×4.5',  unlockStage:12, type:'autoMult',  val:4.5  },
-  { id:'ex06', grade:'EX', emoji:'💀', name:'영겁의 심판',       desc:'크리 확률 +18%', unlockStage:12, type:'critChance',val:0.18 },
+  { id:'ex06', grade:'EX', emoji:'💀', name:'영겁의 심판',       desc:'오프라인 EXP +18%', unlockStage:12, type:'offlineMult',val:0.18 },
   { id:'ex07', grade:'EX', emoji:'🌟', name:'빅뱅의 씨앗',      desc:'전체 EXP ×3.5',  unlockStage:12, type:'allMult',   val:3.5  },
   { id:'ex08', grade:'EX', emoji:'♾️', name:'무한의 고리',       desc:'크리 배율 +4.5', unlockStage:12, type:'critMult',  val:4.5  },
 ];
