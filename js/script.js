@@ -4928,6 +4928,9 @@ requestAnimationFrame(gameTick);
     '<button class="mob-tab" id="mobtab-growth" onclick="mobileTab(\'growth\',this)">' +
       '<span class="mob-tab-icon">&#x26A1;</span><span>성장</span></button>' +
     '<div class="mob-tab-divider"></div>' +
+    '<button class="mob-tab" id="mobtab-worker" onclick="mobileTab(\'worker\',this)">' +
+      '<span class="mob-tab-icon">&#x1F9D1;&#x200D;&#x1F91D;&#x200D;&#x1F9D1;</span><span>일꾼</span></button>' +
+    '<div class="mob-tab-divider"></div>' +
     '<button class="mob-tab" id="mobtab-sfx" onclick="document.getElementById(\'sfx-btn\').click();mobtabSfxSync()">' +
       '<span class="mob-tab-icon">&#x1F50A;</span><span>효과음</span></button>' +
     '<div class="mob-tab-divider"></div>' +
@@ -4950,7 +4953,7 @@ requestAnimationFrame(gameTick);
 })();
 
 function mobileTab(tab, btn) {
-  ['mobtab-center','mobtab-growth'].forEach(function(id) {
+  ['mobtab-center','mobtab-growth','mobtab-worker'].forEach(function(id) {
     var el = document.getElementById(id);
     if(el) el.classList.remove('active');
   });
@@ -4964,6 +4967,9 @@ function mobileTab(tab, btn) {
   if(tab === 'growth') {
     center.style.display = 'none';
     left.classList.add('mobile-active');
+  } else if(tab === 'worker') {
+    center.style.display = 'none';
+    right.classList.add('mobile-active');
   }
 }
 
