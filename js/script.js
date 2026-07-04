@@ -16,6 +16,7 @@ let state = {
   currentRegion: '제단',
   totalExp: 0,
   totalClicks: 0,
+  totalPlayTime: 0,   // 총 접속(플레이) 시간 누적 (초 단위)
   evoCount: 0,
   stage: 0,
   clickMult: 1,
@@ -1705,6 +1706,7 @@ function loadGame(){
       if(!state.gachaCards)  state.gachaCards={};
       if(!state.gachaShards) state.gachaShards={};
       if(!state.items)       state.items={};
+      if(!state.totalPlayTime) state.totalPlayTime = 0;   // 총 접속시간 마이그레이션
       // 차명석 필드 마이그레이션
       if(state.cmsStage === undefined) state.cmsStage = 0;
       if(!state.cmsExp) state.cmsExp = 0;
@@ -1772,6 +1774,13 @@ function loadGame(){
 }
 
 setInterval(saveGame,5000);
+
+// 총 접속(플레이) 시간 누적 - 탭이 실제로 보이는(활성) 상태일 때만 1초마다 +1초
+setInterval(function(){
+  if (document.visibilityState === 'visible') {
+    state.totalPlayTime = (state.totalPlayTime || 0) + 1;
+  }
+}, 1000);
 // 탭 전환/종료 시 즉시 저장 (마지막 변경분 유실 방지)
 window.addEventListener('pagehide', saveGame);
 window.addEventListener('beforeunload', saveGame);
@@ -4522,6 +4531,8 @@ function loadRankData(category) {
       const gs = all[uid] && all[uid].gameState;
       if(!gs) return;
       const name = gs._displayName || '익명';
+      const playTime = gs.totalPlayTime || 0;    // 총 접속시간(초)
+      const lastActive = gs._savedAt || 0;       // 마지막 저장(=활동) 시각
       let exp=0, prestige=0, gacha=0;
       if(category==='jsy') {
         exp = gs.totalExp||0;
@@ -4539,7 +4550,7 @@ function loadRankData(category) {
         prestige = 0;
         gacha = 0;
       }
-      rows.push({uid, name, exp, prestige, gacha});
+      rows.push({uid, name, exp, prestige, gacha, playTime, lastActive});
     });
     rows.sort((a,b)=>b.exp-a.exp);
     renderRankRows(rows.slice(0,50));
@@ -4549,6 +4560,31 @@ function loadRankData(category) {
   });
 }
 
+// 총 접속(플레이) 시간을 "n시간 n분" 형태로 표시
+function formatPlayTime(sec) {
+  sec = Math.floor(sec || 0);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h > 0) return h + '시간 ' + m + '분';
+  if (m > 0) return m + '분';
+  return sec + '초';
+}
+
+// 마지막 활동 시각 표시: 활동중 / n초 전 / n분 전 / n시간 전 / n일 전 / 오래전
+function formatLastActive(ts) {
+  if (!ts) return '정보없음';
+  const diffSec = Math.floor((Date.now() - ts) / 1000);
+  if (diffSec < 15) return '활동중';
+  if (diffSec < 60) return diffSec + '초 전';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return diffMin + '분 전';
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return diffHour + '시간 전';
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay <= 100) return diffDay + '일 전';   // 100일까지만 일 단위 표시
+  return '오래전';                                 // 100일 초과 시 "오래전"
+}
+
 function renderRankRows(rows) {
   const listEl = document.getElementById('rank-list');
   if(!rows.length) { listEl.innerHTML = '<div class="rank-empty">아직 랭킹 데이터가 없습니다</div>'; return; }
@@ -4556,11 +4592,15 @@ function renderRankRows(rows) {
   listEl.innerHTML = rows.map((r,i) => `
     <div class="rank-row${r.uid===myUid?' me':''}">
       <div class="rank-num">${i+1}</div>
-      <div class="rank-name">${r.name}</div>
+      <div class="rank-name-wrap">
+        <div class="rank-name">${r.name}</div>
+        <div class="rank-active">${formatLastActive(r.lastActive)}</div>
+      </div>
       <div class="rank-stats">
         <div class="rank-stat">EXP<b>${formatNum(r.exp)}</b></div>
         <div class="rank-stat">환생<b>${r.prestige}</b></div>
         <div class="rank-stat">뽑기<b>${r.gacha}</b></div>
+        <div class="rank-stat">접속<b>${formatPlayTime(r.playTime)}</b></div>
       </div>
     </div>
   `).join('');

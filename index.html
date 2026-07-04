@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Project: Frenemies</title>
+<title>프로젝트: 웃는 얼굴 뒤에</title>
 <link rel="icon" type="image/x-icon" href="favicon/favicon.ico">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
@@ -1407,8 +1407,10 @@
   .rank-row { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:8px 12px; }
   .rank-row.me { border-color:var(--green); box-shadow:0 0 10px rgba(57,255,20,.2); }
   .rank-num { font-family:'Orbitron',monospace; font-size:.78rem; color:var(--gold); width:26px; text-align:center; flex-shrink:0; }
-  .rank-name { flex:1; font-size:.7rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .rank-stats { display:flex; gap:10px; flex-shrink:0; }
+  .rank-name-wrap { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .rank-name { font-size:.7rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rank-active { font-size:.56rem; color:#4a9; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rank-stats { display:flex; gap:8px; flex-shrink:0; }
   .rank-stat { font-size:.6rem; color:#888; text-align:right; line-height:1.5; }
   .rank-stat b { color:var(--neon); font-family:'Orbitron',monospace; display:block; }
   .rank-empty { font-size:.66rem; color:#555; text-align:center; padding:30px 0; }
