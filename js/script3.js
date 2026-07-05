@@ -1206,10 +1206,6 @@ function openCauldronScreen() {
     return btn;
   }
 
-  overlay.appendChild(makeBtn('🚪 나가기', function() {
-    closeCauldronScreen();
-    closeWitchModal();
-  }));
   overlay.appendChild(makeBtn('⚗️ 연금술', function() {
     showNotification('⚗️ 연금술은 아직 준비 중입니다');
   }));
